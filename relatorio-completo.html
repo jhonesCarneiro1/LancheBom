@@ -45,6 +45,7 @@ button {
 </style>
 
 </head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <body>
 
 <h2>📊 Relatório</h2>
@@ -133,6 +134,52 @@ onValue(ref(db, "pedidos"), (snapshot) => {
     }
 
   });
+ // coloquei aqui pdf
+  async function gerarPDF() {
+  const { jsPDF } = window.jspdf;
+
+  let doc = new jsPDF();
+
+  let y = 10;
+
+  doc.text("RELATÓRIO DE FECHAMENTO", 10, y);
+  y += 10;
+
+  const snapshot = await get(ref(db, "pedidos"));
+
+  if (!snapshot.exists()) {
+    alert("Sem dados");
+    return;
+  }
+
+  snapshot.forEach((item) => {
+    let id = item.key;
+    let p = item.val();
+
+    let texto = `
+ID: ${id}
+Cliente: ${p.cliente}
+Pedido: ${p.pedido}
+Total: R$ ${p.total}
+Data: ${p.data || ""}
+Status: ${p.status}
+--------------------------
+`;
+
+    doc.text(texto, 10, y);
+
+    y += 40;
+
+    if (y > 270) {
+      doc.addPage();
+      y = 10;
+    }
+  });
+
+  doc.save("relatorio.pdf");
+}
+
+  
 
   let valorMotoboy = totalEntregas * 5;
 
@@ -157,7 +204,7 @@ onValue(ref(db, "pedidos"), (snapshot) => {
 });
 
 // 🔁 RESET (SIMPLES E FUNCIONAL)
-window.resetar = function() {
+window.resetar = async function() {
 
   let senha = prompt("Digite a senha:");
   if (senha !== "1234") {
@@ -165,13 +212,17 @@ window.resetar = function() {
     return;
   }
 
-  if (!confirm("Resetar mês?")) return;
+  if (!confirm("Gerar PDF e resetar?")) return;
 
-  update(ref(db, "config"), {
-    dataReset: new Date().toISOString()
-  });
+  // 🔥 gera PDF antes
+  await gerarPDF();
 
-  alert("✅ Reset feito!");
+  // 🔥 apaga tudo
+  remove(ref(db, "pedidos"));
+  remove(ref(db, "entregas_ativas"));
+  remove(ref(db, "entregas_finalizadas"));
+
+  alert("✅ PDF gerado e sistema resetado!");
 };
 
 // carregar automático
