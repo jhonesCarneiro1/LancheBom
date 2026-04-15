@@ -37,15 +37,9 @@ button {
   background: red;
   color: white;
 }
-
-.filtro {
-  background: #2196f3;
-  color: white;
-}
 </style>
-
 </head>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <body>
 
 <h2>📊 Relatório</h2>
@@ -66,7 +60,7 @@ button {
 </div>
 
 <div class="box">
-  💸 Pagamento motoboy (R$5 por entrega)
+  💸 Pagamento motoboy
   <div id="motoboy" class="valor">R$ 0</div>
 </div>
 
@@ -77,50 +71,56 @@ button {
 
 <button class="reset" onclick="resetar()">🗑 Resetar mês</button>
 
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getDatabase, ref, onValue, update, get, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+import { getDatabase, ref, onValue, get, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
-// 🔥 CONFIG CORRETA (SUA ORIGINAL)
 const firebaseConfig = {
-  apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
+  apiKey: "SUA_KEY",
   authDomain: "lanchebom-991d9.firebaseapp.com",
   databaseURL: "https://lanchebom-991d9-default-rtdb.firebaseio.com",
   projectId: "lanchebom-991d9",
   storageBucket: "lanchebom-991d9.firebasestorage.app",
   messagingSenderId: "442622892318",
-  appId: "1:442622892318:web:af6a12026d2212b4d2510f",
-  measurementId: "G-4EBW5J014C"
+  appId: "1:442622892318:web:af6a12026d2212b4d2510f"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 🔐 LOGIN
+// login
 const auth = getAuth(app);
-signInWithEmailAndPassword(auth, "realidadelanchesalgadosilvapau@gmail.com", "4639Clarice@")
-  .then(() => console.log("✅ Logado"))
-  .catch((e) => console.error("Erro login:", e));
+signInWithEmailAndPassword(auth, "SEU_EMAIL", "SUA_SENHA");
 
-// 📊 RELATÓRIO
+// 🔥 RELATÓRIO (corrigido)
 onValue(ref(db, "pedidos"), (snapshot) => {
 
   let dados = snapshot.val();
-  if (!dados) return;
-  
+
+  // 🔥 limpa tela sempre
   let totalVendas = 0;
   let totalEntregas = 0;
   let motoboys = {};
 
+  document.getElementById("vendas").innerText = "R$ 0";
+  document.getElementById("entregas").innerText = "0";
+  document.getElementById("valorEntregas").innerText = "R$ 0";
+  document.getElementById("motoboy").innerText = "R$ 0";
+  document.getElementById("listaMotoboys").innerHTML = "";
+
+  if (!dados) return;
+
   Object.values(dados).forEach(pedido => {
 
-    // 💰 VENDAS
     if (pedido.status === "finalizado" || pedido.status === "entregue") {
       totalVendas += Number(pedido.total || 0);
     }
 
-    // 🛵 ENTREGAS
     if (pedido.tipo === "delivery" && pedido.status === "entregue") {
       totalEntregas++;
 
@@ -142,26 +142,21 @@ onValue(ref(db, "pedidos"), (snapshot) => {
   document.getElementById("valorEntregas").innerText = "R$ " + totalVendas.toFixed(2);
   document.getElementById("motoboy").innerText = "R$ " + valorMotoboy.toFixed(2);
 
-  // 👇 LISTA MOTOBOYS
   let lista = "";
 
   Object.entries(motoboys).forEach(([nome, qtd]) => {
     let valor = qtd * 5;
-
-    lista += `<div>
-      ${nome} → ${qtd} entregas → R$ ${valor}
-    </div>`;
+    lista += `<div>${nome} → ${qtd} entregas → R$ ${valor}</div>`;
   });
 
   document.getElementById("listaMotoboys").innerHTML = lista;
 
 });
- // coloquei aqui pdf
-  async function gerarPDF() {
+
+// 🔥 GERAR PDF
+async function gerarPDF() {
   const { jsPDF } = window.jspdf;
-
   let doc = new jsPDF();
-
   let y = 10;
 
   doc.text("RELATÓRIO DE FECHAMENTO", 10, y);
@@ -178,19 +173,14 @@ onValue(ref(db, "pedidos"), (snapshot) => {
     let id = item.key;
     let p = item.val();
 
-    let texto = `
-ID: ${id}
+    let texto = `ID: ${id}
 Cliente: ${p.cliente}
 Pedido: ${p.pedido}
 Total: R$ ${p.total}
-Data: ${p.data || ""}
-Status: ${p.status}
---------------------------
-`;
+Status: ${p.status}`;
 
     doc.text(texto, 10, y);
-
-    y += 40;
+    y += 30;
 
     if (y > 270) {
       doc.addPage();
@@ -201,30 +191,22 @@ Status: ${p.status}
   doc.save("relatorio.pdf");
 }
 
-  
-
-// 🔁 RESET (SIMPLES E FUNCIONAL)
+// 🔥 RESET COMPLETO
 window.resetar = async function() {
 
   let senha = prompt("Digite a senha:");
-  if (senha !== "1234") {
-    alert("❌ Senha incorreta!");
-    return;
-  }
+  if (senha !== "1234") return;
 
   if (!confirm("Gerar PDF e resetar?")) return;
 
-  // 🔥 gera PDF antes
   await gerarPDF();
 
-  // 🔥 apaga tudo
-  remove(ref(db, "pedidos"));
-  remove(ref(db, "entregas_ativas"));
-  remove(ref(db, "entregas_finalizadas"));
+  await remove(ref(db, "pedidos"));
+  await remove(ref(db, "entregas_ativas"));
+  await remove(ref(db, "entregas_finalizadas"));
 
-  alert("✅ PDF gerado e sistema resetado!");
+  alert("✅ Reset completo!");
 };
-
 
 </script>
 
