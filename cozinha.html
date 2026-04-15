@@ -22,13 +22,12 @@ h2 { text-align: center; }
 
 button {
   margin-top: 10px;
-  padding: 8px;
+  padding: 10px;
   width: 100%;
-  background: green;
-  color: white;
   border: none;
   font-weight: bold;
   cursor: pointer;
+  border-radius: 5px;
 }
 
 .info { font-size: 14px; color: #ccc; }
@@ -42,12 +41,13 @@ button {
   height: 70px;
   font-size: 26px;
 }
-  .btn-local {
-  background: #2196f3; /* azul */
+
+.btn-local {
+  background: #2196f3;
 }
 
 .btn-entrega {
-  background: #4caf50; /* verde */
+  background: #4caf50;
 }
 </style>
 </head>
@@ -62,18 +62,11 @@ button {
 </audio>
 
 <button id="btnSom" onclick="ativarSom()">🔊</button>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getDatabase, ref, onChildAdded, push, get, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-import { 
-  getDatabase, 
-  ref, 
-  onChildAdded, 
-  push, 
-  get, 
-  update
-} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-  
 const firebaseConfig = {
   apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
   authDomain: "lanchebom-991d9.firebaseapp.com",
@@ -81,8 +74,7 @@ const firebaseConfig = {
   projectId: "lanchebom-991d9",
   storageBucket: "lanchebom-991d9.firebasestorage.app",
   messagingSenderId: "442622892318",
-  appId: "1:442622892318:web:af6a12026d2212b4d2510f",
-  measurementId: "G-4EBW5J014C"
+  appId: "1:442622892318:web:af6a12026d2212b4d2510f"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -93,6 +85,7 @@ const som = document.getElementById("som");
 
 let liberado = false;
 
+// 🔊 Ativar som
 window.ativarSom = function() {
   som.play().then(() => {
     som.pause();
@@ -102,27 +95,47 @@ window.ativarSom = function() {
   });
 };
 
-// 🔥 LER DA COZINHA CORRETO
-// 🔥 LER DA COZINHA
+// 🔥 LISTEN PEDIDOS
 onChildAdded(ref(db, "pedidos"), (snapshot) => {
   let p = snapshot.val();
 
-  // ❌ NÃO mostra pedidos já enviados ou finalizados
   if (
     p.status === "pronto" || 
     p.status === "finalizado" || 
     p.status === "entregue"
   ) return;
 
-
   if (liberado) {
-    
     som.currentTime = 0;
     som.play().catch(() => {});
   }
 
   let div = document.createElement("div");
   div.className = "pedido";
+
+  // 🎯 COR POR TIPO
+  if (p.tipo === "local") {
+    div.style.borderLeft = "5px solid #2196f3";
+  } else {
+    div.style.borderLeft = "5px solid #4caf50";
+  }
+
+  // 🎯 BOTÃO DINÂMICO
+  let botoes = "";
+
+  if (p.tipo === "local") {
+    botoes = `
+      <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
+        🏪 Pronto (Local)
+      </button>
+    `;
+  } else {
+    botoes = `
+      <button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
+        🛵 Enviar para Entrega
+      </button>
+    `;
+  }
 
   div.innerHTML = `
     <strong>👤 ${p.cliente}</strong><br>
@@ -135,18 +148,11 @@ onChildAdded(ref(db, "pedidos"), (snapshot) => {
     <br><br>
     <strong>💰 Total: R$ ${p.total || 0}</strong>
 
-   <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
-  🏪 Pronto (Local)
-</button>
-
-<button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
-  🛵 Enviar para Entrega
-</button>
+    ${botoes}
   `;
 
   lista.prepend(div);
 });
-
 
 // 🛵 ENVIAR PARA MOTOBOY
 window.enviarEntrega = function(id, botao) {
@@ -159,29 +165,23 @@ window.enviarEntrega = function(id, botao) {
 
     let dados = snapshot.val();
 
-    // 👉 ENVIA PRO MOTOBOY
     push(ref(db, "entregas_ativas"), {
       ...dados,
       pedidoId: id,
       status: "novo"
     }).then(() => {
 
-      // 🔄 ATUALIZA PEDIDO
       update(ref(db, "pedidos/" + id), {
         status: "pronto",
         tipo: "delivery"
       });
 
-      // remove só da tela
       botao.parentElement.remove();
 
     }).catch((erro) => {
       console.error("Erro ao enviar:", erro);
       alert("Erro ao enviar pro motoboy!");
     });
-
-  }).catch((erro) => {
-    console.error("Erro ao buscar pedido:", erro);
   });
 };
 
@@ -195,8 +195,7 @@ window.finalizarLocal = function(id, botao) {
   });
 
   botao.parentElement.remove();
-};  
-
+};
 </script>
 
 </body>
