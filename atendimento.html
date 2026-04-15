@@ -188,28 +188,26 @@ window.enviar = function() {
     `${p.nome} (${p.obs || "sem observação"})`
   ).join("\n");
 
-push(ref(db, "pedidos"), {
+// troqueiaqui
+  push(ref(db, "pedidos"), {
   cliente: cliente,
+
+  // 🔥 padrão igual cardápio
+  telefone: "",
+  endereco: "Retirada no local",
+  origem: "atendimento",
+
   pedido: resumo,
   total: total,
   hora: new Date().toLocaleTimeString(),
 
+  // mantém seu controle
   tipo: "local",
   status: "pendente",
   motoboy: "",
   data: new Date().toISOString()
 });
-  alert("Pedido enviado!");
-
-  pedidos = [];
-  total = 0;
-  atualizarTela();
-  document.getElementById("cliente").value = "";
-}
-
-carregarProdutos();
-  if (produtos.length > 0) {
-  document.getElementById("foto").src = produtos[0].imagem || "";
+   
 }
 </script>
 
