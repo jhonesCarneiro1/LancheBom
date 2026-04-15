@@ -134,6 +134,28 @@ onValue(ref(db, "pedidos"), (snapshot) => {
     }
 
   });
+
+  let valorMotoboy = totalEntregas * 5;
+
+  document.getElementById("vendas").innerText = "R$ " + totalVendas.toFixed(2);
+  document.getElementById("entregas").innerText = totalEntregas;
+  document.getElementById("valorEntregas").innerText = "R$ " + totalVendas.toFixed(2);
+  document.getElementById("motoboy").innerText = "R$ " + valorMotoboy.toFixed(2);
+
+  // 👇 LISTA MOTOBOYS
+  let lista = "";
+
+  Object.entries(motoboys).forEach(([nome, qtd]) => {
+    let valor = qtd * 5;
+
+    lista += `<div>
+      ${nome} → ${qtd} entregas → R$ ${valor}
+    </div>`;
+  });
+
+  document.getElementById("listaMotoboys").innerHTML = lista;
+
+});
  // coloquei aqui pdf
   async function gerarPDF() {
   const { jsPDF } = window.jspdf;
@@ -180,28 +202,6 @@ Status: ${p.status}
 }
 
   
-
-  let valorMotoboy = totalEntregas * 5;
-
-  document.getElementById("vendas").innerText = "R$ " + totalVendas.toFixed(2);
-  document.getElementById("entregas").innerText = totalEntregas;
-  document.getElementById("valorEntregas").innerText = "R$ " + totalVendas.toFixed(2);
-  document.getElementById("motoboy").innerText = "R$ " + valorMotoboy.toFixed(2);
-
-  // 👇 LISTA MOTOBOYS
-  let lista = "";
-
-  Object.entries(motoboys).forEach(([nome, qtd]) => {
-    let valor = qtd * 5;
-
-    lista += `<div>
-      ${nome} → ${qtd} entregas → R$ ${valor}
-    </div>`;
-  });
-
-  document.getElementById("listaMotoboys").innerHTML = lista;
-
-});
 
 // 🔁 RESET (SIMPLES E FUNCIONAL)
 window.resetar = async function() {
