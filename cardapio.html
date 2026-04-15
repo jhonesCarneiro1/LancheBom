@@ -251,6 +251,9 @@ window.enviar = function() {
     formaPagamento: formaPagamento,
     statusPagamento: "pendente",
   });
+  if (formaPagamento === "pix") {
+  window.open("https://mpago.la/SEU_LINK_AQUI");
+}
 
   alert("Pedido enviado!");
 
