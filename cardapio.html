@@ -79,6 +79,11 @@ button {
 
 <textarea id="obs" placeholder="Ex: sem cebola..."></textarea>
 
+  <select id="pagamento">
+  <option value="entrega">Pagar na entrega</option>
+  <option value="pix">Pix / Cartão online</option>
+</select>
+  
 <button onclick="adicionarManual()">➕ Adicionar (manual)</button>
 
 <hr>
@@ -216,6 +221,7 @@ function atualizarTela() {
 }
 // ENVIAR PEDIDO
 window.enviar = function() {
+  let formaPagamento = document.getElementById("pagamento").value;
   let cliente = document.getElementById("cliente").value;
   let telefone = document.getElementById("telefone").value;
   let endereco = document.getElementById("endereco").value;
@@ -242,6 +248,8 @@ window.enviar = function() {
     pedido: resumo,
     total: total,
     hora: new Date().toLocaleTimeString()
+    formaPagamento: formaPagamento,
+    statusPagamento: "pendente",
   });
 
   alert("Pedido enviado!");
