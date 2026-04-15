@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Pedido Lanchonete</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f5f5f5;
+}
+
+.container {
+  max-width: 400px;
+  margin: auto;
+  background: #fff;
+  padding: 15px;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+textarea {
+  resize: none;
+  height: 60px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #e53935;
+  color: white;
+  border: none;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.secondary {
+  background: #555;
+}
+
+.item {
+  border-bottom: 1px solid #eee;
+  padding: 5px 0;
+}
+
+.total {
+  font-weight: bold;
+  color: red;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h2>🍔 Novo Pedido</h2>
+
+<input type="text" id="cliente" placeholder="Nome do cliente">
+
+<select id="produto"></select>
+<img id="foto" style="width:100%; max-height:200px; object-fit:cover; margin-bottom:10px;">
+<textarea id="obs" placeholder="Ex: sem cebola, bem passado..."></textarea>
+
+<button onclick="adicionar()">➕ Adicionar Produto</button>
+
+<hr>
+
+
+
+<div id="lista"></div>
+
+<hr>
+
+<div class="total">
+  Total: <span id="total">R$ 0</span>
+</div>
+
+<br>
+
+<button onclick="enviar()">📤 Enviar para Cozinha</button>
+
+</div>
+
+<!-- 🔥 FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getDatabase, ref, push, onValue,remove, update} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBZE-EDNUf1Li-kcUx_bhw51ho7dlqXbmM",
+  authDomain: "realidade-60bdb.firebaseapp.com",
+  databaseURL: "https://realidade-60bdb-default-rtdb.firebaseio.com",
+  projectId: "realidade-60bdb",
+  storageBucket: "realidade-60bdb.firebasestorage.app",
+  messagingSenderId: "510520738222",
+  appId: "1:510520738222:web:272dc6dd89a53d5d02c83f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let total = 0;
+let pedidos = [];
+
+let produtos = [];
+
+onValue(ref(db, "produtos"), (snapshot) => {
+  produtos = [];
+
+  snapshot.forEach(item => {
+    produtos.push(item.val());
+  });
+
+  carregarProdutos();
+});
+  
+window.carregarProdutos = function() {
+  let select = document.getElementById("produto");
+  select.innerHTML = "";
+
+  produtos.forEach((p, i) => {
+    select.innerHTML += `<option value="${i}">
+     ${p.nome} - R$${p.preco} (${p.descricao || ""})
+    </option>`;
+  });
+}
+
+window.adicionar = function() {
+  let index = document.getElementById("produto").value;
+  let obs = document.getElementById("obs").value;
+
+  let produto = produtos[index];
+
+  pedidos.push({
+    nome: produto.nome,
+    preco: produto.preco,
+    obs: obs
+  });
+
+  total += produto.preco;
+  document.getElementById("obs").value = "";
+
+  atualizarTela();
+}
+document.getElementById("produto").addEventListener("change", function() {
+  let index = this.value;
+  let produto = produtos[index];
+
+  document.getElementById("foto").src = produto.imagem || "";
+});
+function atualizarTela() {
+  let lista = document.getElementById("lista");
+  lista.innerHTML = "";
+
+  pedidos.forEach(item => {
+    lista.innerHTML += `
+      <div class="item">
+        <strong>${item.nome}</strong> - R$${item.preco}
+        <br><small>${item.obs || ""}</small>
+      </div>
+    `;
+  });
+
+  document.getElementById("total").innerText = "R$ " + total;
+}
+
+
+window.enviar = function() {
+  let cliente = document.getElementById("cliente").value;
+
+  if (!cliente) {
+    alert("Digite o nome do cliente");
+    return;
+  }
+
+  if (pedidos.length === 0) {
+    alert("Adicione itens");
+    return;
+  }
+
+  let resumo = pedidos.map(p =>
+    `${p.nome} (${p.obs || "sem observação"})`
+  ).join("\n");
+
+push(ref(db, "pedidos"), {
+  cliente: cliente,
+  pedido: resumo,
+  total: total,
+  hora: new Date().toLocaleTimeString(),
+
+  tipo: "local",
+  status: "pendente",
+  motoboy: "",
+  data: new Date().toISOString()
+});
+  alert("Pedido enviado!");
+
+  pedidos = [];
+  total = 0;
+  atualizarTela();
+  document.getElementById("cliente").value = "";
+}
+
+carregarProdutos();
+  if (produtos.length > 0) {
+  document.getElementById("foto").src = produtos[0].imagem || "";
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Motoboy</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: #fff;
+}
+h2 { text-align: center; }
+
+.pedido {
+  background: #222;
+  margin: 10px;
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 5px solid #00c853;
+}
+
+button {
+  margin-top: 8px;
+  padding: 10px;
+  width: 100%;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.maps { background: #2196f3; color: white; }
+.entregue { background: #4caf50; color: white; }
+
+.info { font-size: 14px; color: #ccc; }
+
+#btnSom {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: red;
+  width: 70px;
+  height: 70px;
+  font-size: 26px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🛵 Entregas</h2>
+  <input type="text" id="nomeMotoboy" placeholder="Seu nome">
+<div id="lista"></div>
+
+<audio id="som">
+  <source src="https://raw.githubusercontent.com/realidadelanchesalgadosilvapau-collab/Realidadelanchonete/main/olhaentrega.mp3" type="audio/mpeg">
+</audio>
+
+<button id="btnSom" onclick="ativarSom()">🔊</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getDatabase, ref, onChildAdded, get, push, remove, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+// 🔥 SUA CONFIG REAL (NÃO MUDA)
+const firebaseConfig = {
+  apiKey: "AIzaSyBZE-EDNUf1Li-kcUx_bhw51ho7dlqXbmM",
+  authDomain: "realidade-60bdb.firebaseapp.com",
+  databaseURL: "https://realidade-60bdb-default-rtdb.firebaseio.com",
+  projectId: "realidade-60bdb",
+  storageBucket: "realidade-60bdb.firebasestorage.app",
+  messagingSenderId: "510520738222",
+  appId: "1:510520738222:web:272dc6dd89a53d5d02c83f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const lista = document.getElementById("lista");
+const som = document.getElementById("som");
+
+let liberado = false;
+
+// 🔊 ATIVAR SOM
+window.ativarSom = function() {
+  som.play().then(() => {
+    som.pause();
+    som.currentTime = 0;
+    liberado = true;
+    document.getElementById("btnSom").style.display = "none";
+  });
+};
+
+// 🔥 LER ENTREGAS
+onChildAdded(ref(db, "entregas_ativas"), (snapshot) => {
+  let p = snapshot.val();
+
+  // ❌ IGNORA ENTREGAS FINALIZADAS
+  if (p.status === "entregue") return;
+
+  if (liberado) {
+    som.currentTime = 0;
+    som.play().catch(() => {});
+  }
+
+  let div = document.createElement("div");
+  div.className = "pedido";
+
+  div.innerHTML = `
+    <strong>👤 ${p.cliente}</strong><br>
+    <span class="info">📞 ${p.telefone || "não informado"}</span><br>
+    <span class="info">📍 ${p.endereco || "retirada no local"}</span><br>
+    <span class="info">🕒 ${p.hora}</span><br><br>
+
+    ${p.pedido.replace(/\n/g, "<br>")}
+
+    <br><br>
+    <strong>💰 Total: R$ ${p.total || 0}</strong>
+
+    <button class="maps" onclick="abrirMapa('${p.endereco}')">
+      📍 Abrir no mapa
+    </button>
+
+    <button class="entregue" onclick="finalizar('${snapshot.key}', this)">
+      ✅ Entregue
+    </button>
+  `;
+
+  lista.prepend(div);
+});
+
+// 📍 MAPA
+window.abrirMapa = function(endereco) {
+  let url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(endereco);
+  window.open(url, "_blank");
+};
+
+// ✅ FINALIZAR
+window.finalizar = function(id, botao) {
+  if (!confirm("Marcar como entregue?")) return;
+  
+  let nomeMotoboy = document.getElementById("nomeMotoboy").value;
+
+if (!nomeMotoboy) {
+  alert("Digite o nome do motoboy!");
+  return;
+}
+  let entregaRef = ref(db, "entregas_ativas/" + id);
+
+  get(entregaRef).then((snapshot) => {
+    if (!snapshot.exists()) return;
+
+    let dados = snapshot.val();
+
+    // 📦 HISTÓRICO (opcional, pode manter)
+    push(ref(db, "entregas_finalizadas"), {
+      ...dados,
+      status: "entregue",
+      data: new Date().toISOString()
+    });
+
+    // ✅ ATUALIZA PEDIDO CORRETO atualiza nome motoboy e entrega
+ update(ref(db, "pedidos/" + dados.pedidoId), {
+  status: "entregue",
+  motoboy: nomeMotoboy
+});
+// 🔥 REMOVE DA FILA DO MOTOBOY
+remove(ref(db, "entregas_ativas/" + id));
+
+// remove da tela
+botao.parentElement.remove();
+  });
+};
+
+</script>
+
+</body>
+</html>
