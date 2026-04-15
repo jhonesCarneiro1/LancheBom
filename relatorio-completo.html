@@ -107,8 +107,17 @@ signInWithEmailAndPassword(auth, "realidadelanchesalgadosilvapau@gmail.com", "46
 onValue(ref(db, "pedidos"), (snapshot) => {
 
   let dados = snapshot.val();
-  if (!dados) return;
+ // if (!dados) return;
+if (!dados) {
+  document.getElementById("vendas").innerText = "R$ 0";
+  document.getElementById("entregas").innerText = "0";
+  document.getElementById("valorEntregas").innerText = "R$ 0";
+  document.getElementById("motoboy").innerText = "R$ 0";
+  document.getElementById("listaMotoboys").innerHTML = "";
+  return;
+}
 
+  
   let totalVendas = 0;
   let totalEntregas = 0;
   let motoboys = {};
