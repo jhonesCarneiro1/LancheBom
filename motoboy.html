@@ -90,6 +90,24 @@ const db = getDatabase(app);
 const lista = document.getElementById("lista");
 const som = document.getElementById("som");
 const auth = getAuth(app);
+// 🔐 LOGIN
+window.login = function() {
+  let email = document.getElementById("email").value;
+  let senha = document.getElementById("senha").value;
+
+  signInWithEmailAndPassword(auth, email, senha)
+    .then(() => console.log("logado"))
+    .catch((e) => alert("Erro: " + e.message));
+};
+
+// 🔓 LIBERAR TELA APÓS LOGIN
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("conteudo").style.display = "block";
+  }
+});
+  
 let liberado = false;
 
 // 🔊 ATIVAR SOM
