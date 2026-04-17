@@ -48,6 +48,14 @@ button {
 
 <body>
 
+  <div id="loginBox">
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="senha" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+</div>
+
+<div id="conteudo" style="display:none;">
+  
 <h2>🛵 Entregas</h2>
   <input type="text" id="nomeMotoboy" placeholder="Seu nome">
 <div id="lista"></div>
@@ -61,7 +69,9 @@ button {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, onChildAdded, get, push, remove, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+  
 // 🔥 SUA CONFIG REAL (NÃO MUDA)
 const firebaseConfig = {
   apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
@@ -79,7 +89,7 @@ const db = getDatabase(app);
 
 const lista = document.getElementById("lista");
 const som = document.getElementById("som");
-
+const auth = getAuth(app);
 let liberado = false;
 
 // 🔊 ATIVAR SOM
@@ -174,6 +184,7 @@ botao.parentElement.remove();
 };
 
 </script>
-
+</div>
 </body>
 </html>
+
