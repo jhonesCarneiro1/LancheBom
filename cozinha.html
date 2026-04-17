@@ -53,7 +53,14 @@ button {
 </head>
 
 <body>
+  
+<div id="loginBox">
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="senha" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+</div>
 
+<div id="conteudo" style="display:none;">
 <h2>🍳 Pedidos</h2>
 <div id="lista"></div>
 
@@ -66,7 +73,9 @@ button {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, onChildAdded, push, get, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+  
 const firebaseConfig = {
   apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
   authDomain: "lanchebom-991d9.firebaseapp.com",
@@ -197,6 +206,6 @@ window.finalizarLocal = function(id, botao) {
   botao.parentElement.remove();
 };
 </script>
-
+</div>
 </body>
 </html>
