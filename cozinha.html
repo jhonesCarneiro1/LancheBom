@@ -204,7 +204,10 @@ window.enviarEntrega = function(id, botao) {
   let pedidoRef = ref(db, "pedidos/" + id);
 
   get(pedidoRef).then((snapshot) => {
-    if (!snapshot.exists()) return;
+    if (!snapshot.exists()) {
+      alert("Pedido não encontrado");
+      return;
+    }
 
     let dados = snapshot.val();
 
@@ -212,7 +215,9 @@ window.enviarEntrega = function(id, botao) {
       ...dados,
       pedidoId: id,
       status: "novo"
-    }).then(() => {
+    })
+    .then(() => {
+      console.log("✅ Enviado pro motoboy");
 
       update(ref(db, "pedidos/" + id), {
         status: "pronto",
@@ -220,9 +225,8 @@ window.enviarEntrega = function(id, botao) {
       });
 
       botao.parentElement.remove();
-    });
-  });
-};
+    })
+    .catch((erro
 
 // 🏪 LOCAL
 window.finalizarLocal = function(id, botao) {
