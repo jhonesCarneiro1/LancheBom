@@ -91,7 +91,17 @@ const db = getDatabase(app);
 
 const lista = document.getElementById("lista");
 const som = document.getElementById("som");
+const auth = getAuth(app);
 
+window.login = function() {
+  let email = document.getElementById("email").value;
+  let senha = document.getElementById("senha").value;
+
+  signInWithEmailAndPassword(auth, email, senha)
+    .catch((e) => alert(e.message));
+};
+
+  
 let liberado = false;
 
 // 🔊 Ativar som
