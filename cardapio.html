@@ -17,7 +17,7 @@ body {
   padding: 15px;
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
@@ -59,8 +59,8 @@ button {
   border-radius: 8px;
 }
 </style>
-
 </head>
+
 <body>
 
 <div class="container">
@@ -68,26 +68,33 @@ button {
 <h2>🍔 Fazer Pedido</h2>
 
 <input type="text" id="cliente" placeholder="Seu nome">
-<input type="tel" id="telefone" placeholder="Seu WhatsApp" pattern="[0-9]*" inputmode="numeric">
-  <input type="text" id="cep" placeholder="CEP">
-  <input type="text" id="endereco" placeholder="Seu endereço (ou retirar no local)">
+<input type="tel" id="telefone" placeholder="Seu WhatsApp">
+<input type="text" id="cep" placeholder="CEP">
+<input type="text" id="endereco" placeholder="Seu endereço (ou retirar no local)">
 
 <img id="foto" style="width:100%; margin-bottom:10px; border-radius:10px;">
 
-<!-- Cardápio -->
 <div id="cardapio"></div>
 
 <textarea id="obs" placeholder="Ex: sem cebola..."></textarea>
 
- 
 <hr>
 
 <div id="lista"></div>
 
 <hr>
-<div style="font-weight:bold; margin-top:10px;">
+
+<div style="font-weight:bold;">
   Total: R$ <span id="total">0</span>
 </div>
+
+<!-- ✅ PAGAMENTO NO LUGAR CERTO -->
+<select id="pagamento">
+  <option value="entrega">Pagar na entrega</option>
+  <option value="pix">PIX</option>
+  <option value="cartao">Cartão online</option>
+</select>
+
 <button onclick="enviar()">📤 Enviar Pedido</button>
 
 </div>
@@ -96,21 +103,26 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-  
 const firebaseConfig = {
-  apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
-  authDomain: "lanchebom-991d9.firebaseapp.com",
-  databaseURL: "https://lanchebom-991d9-default-rtdb.firebaseio.com",
-  projectId: "lanchebom-991d9",
-  storageBucket: "lanchebom-991d9.firebasestorage.app",
-  messagingSenderId: "442622892318",
-  appId: "1:442622892318:web:af6a12026d2212b4d2510f",
-  measurementId: "G-4EBW5J014C"
+  apiKey: "SUA_KEY",
+  authDomain: "SEU_DOMINIO",
+  databaseURL: "SUA_URL",
 };
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let pedidos = [];
+let produtos = [];
+let total = 0;
+
+// TELEFONE NUMÉRICO
 document.getElementById("telefone").addEventListener("input", function() {
   this.value = this.value.replace(/\D/g, "");
 });
-  document.getElementById("cep").addEventListener("blur", function() {
+
+// CEP automático
+document.getElementById("cep").addEventListener("blur", function() {
   let cep = this.value.replace(/\D/g, "");
 
   if (cep.length !== 8) return;
@@ -126,23 +138,8 @@ document.getElementById("telefone").addEventListener("input", function() {
       }
     });
 });
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 
-
-let pedidos = [];
-let produtos = [];
-let total= 0;
-let ultimoPedidoId = null;
-
-window.pagarPix = function() {
-  if (!ultimoPedidoId) return;
-
-  window.open("https://mpago.la/SEU_LINK_AQUI");
-
-  // opcional: marcar como aguardando pagamento
-};
-// CARREGAR PRODUTOS
+// 🔥 CARREGAR PRODUTOS
 onValue(ref(db, "produtos"), (snapshot) => {
   produtos = [];
 
@@ -153,7 +150,7 @@ onValue(ref(db, "produtos"), (snapshot) => {
   carregarProdutos();
 });
 
-// MONTAR CARDÁPIO
+// MOSTRAR PRODUTOS
 function carregarProdutos() {
   let div = document.getElementById("cardapio");
   div.innerHTML = "";
@@ -168,34 +165,30 @@ function carregarProdutos() {
     `;
   });
 
-  // mostra primeira imagem
   if (produtos.length > 0) {
     document.getElementById("foto").src = produtos[0].imagem || "";
   }
 }
 
-// CLICAR NO PRODUTO
+// ADICIONAR ITEM
 window.selecionar = function(index) {
   let produto = produtos[index];
 
   document.getElementById("foto").src = produto.imagem || "";
 
-  let obs = prompt("Observação? (ex: sem cebola)");
-pedidos.push({
-  nome: produto.nome,
-  preco: produto.preco,
-  obs: obs || ""
-});
+  let obs = prompt("Observação?");
 
-total += produto.preco;
+  pedidos.push({
+    nome: produto.nome,
+    preco: produto.preco,
+    obs: obs || ""
+  });
+
+  total += produto.preco;
   atualizarTela();
-}
+};
 
-
-// ADICIONAR MANUAL (opcional)
-
-
-// ATUALIZAR LISTA
+// ATUALIZAR TELA
 function atualizarTela() {
   let lista = document.getElementById("lista");
   lista.innerHTML = "";
@@ -211,18 +204,16 @@ function atualizarTela() {
 
   document.getElementById("total").innerText = total;
 }
-  <select id="pagamento">
-  <option value="entrega">Pagar na entrega</option>
-  <option value="pix">PIX</option>
-  <option value="cartao">Cartão online</option>
-</select>
+
 // ENVIAR PEDIDO
 window.enviar = function() {
-  let formaPagamento = document.getElementById("pagamento").value;
+  let selectPagamento = document.getElementById("pagamento");
+  let formaPagamento = selectPagamento ? selectPagamento.value : "entrega";
+
   let cliente = document.getElementById("cliente").value;
   let telefone = document.getElementById("telefone").value;
   let endereco = document.getElementById("endereco").value;
-  
+
   if (!cliente || !telefone) {
     alert("Preencha nome e telefone");
     return;
@@ -237,48 +228,33 @@ window.enviar = function() {
     `${p.nome} (${p.obs || "sem observação"})`
   ).join("\n");
 
- push(ref(db, "pedidos"), {
-  cliente: cliente,
-  telefone: telefone,
-  endereco: endereco || "Retirada no local",
-  origem: "cliente",
-  pedido: resumo,
-  total: total,
-  hora: new Date().toLocaleTimeString(),
-  formaPagamento: formaPagamento,
-  statusPagamento: "pendente",
-}).then((ref) => {
+  push(ref(db, "pedidos"), {
+    cliente,
+    telefone,
+    endereco: endereco || "Retirada no local",
+    pedido: resumo,
+    total,
+    hora: new Date().toLocaleTimeString(),
+    formaPagamento,
+    statusPagamento: "pendente",
+  }).then((ref) => {
 
-  ultimoPedidoId = ref.key;
+    if (formaPagamento === "pix" || formaPagamento === "cartao") {
+      window.open("https://mpago.la/SEU_LINK_AQUI");
+    } else {
+      alert("Pedido enviado! Pague na entrega.");
+    }
 
-  if (formaPagamento === "pix" || formaPagamento === "cartao") {
-    window.open("https://mpago.la/SEU_LINK_AQUI");
-  } else {
-    alert("Pedido enviado! Pague na entrega.");
-  }
+    pedidos = [];
+    total = 0;
+    atualizarTela();
 
-  // 🔥 LIMPAR PEDIDO (faltava isso)
-  pedidos = [];
-  total = 0;
-  atualizarTela();
-
-  document.getElementById("cliente").value = "";
-  document.getElementById("telefone").value = "";
-  document.getElementById("endereco").value = "";
-
-});
-  ultimoPedidoId = ref.key;
-
- // 🔥 COLOCA AQUI
-  if (formaPagamento === "pix" || formaPagamento === "cartao") {
-    window.open("https://mpago.la/SEU_LINK_AQUI");
-  } else {
-    alert("Pedido enviado! Pague na entrega.");
-  }
-
-});
+    document.getElementById("cliente").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("endereco").value = "";
+  });
+};
 </script>
 
 </body>
 </html>
-
