@@ -190,17 +190,7 @@ total += produto.preco;
 
 
 // ADICIONAR MANUAL (opcional)
-window.adicionarManual = function() {
-  let obs = document.getElementById("obs").value;
 
-  pedidos.push({
-    nome: "Item manual",
-    obs: obs
-  });
-
-  document.getElementById("obs").value = "";
-  atualizarTela();
-}
 
 // ATUALIZAR LISTA
 function atualizarTela() {
