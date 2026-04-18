@@ -41,13 +41,17 @@ button {
 </head>
 
 <body>
+
+<!-- 🔐 LOGIN -->
 <div id="loginBox">
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="senha" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
 
+<!-- 🔓 CONTEÚDO -->
 <div id="conteudo" style="display:none;">
+
 <h2>📊 Relatório</h2>
 
 <div class="box">
@@ -77,6 +81,8 @@ button {
 
 <button class="reset" onclick="resetar()">🗑 Resetar mês</button>
 
+</div>
+
 <!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -85,7 +91,10 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, onValue, get, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";const firebaseConfig = {                                      
+from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+
+// 🔥 CONFIG
+const firebaseConfig = {
   apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
   authDomain: "lanchebom-991d9.firebaseapp.com",
   databaseURL: "https://lanchebom-991d9-default-rtdb.firebaseio.com",
@@ -97,27 +106,25 @@ from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";const firebas
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// login
 const auth = getAuth(app);
-// 🔐 LOGIN MANUAL
+
+// 🔐 LOGIN
 window.login = function() {
   let email = document.getElementById("email").value;
   let senha = document.getElementById("senha").value;
 
   signInWithEmailAndPassword(auth, email, senha)
-    .then(() => console.log("logado"))
     .catch((e) => alert("Erro: " + e.message));
 };
 
-// 🔓 LIBERAR TELA
+// 🔓 LIBERA TELA APÓS LOGIN
 onAuthStateChanged(auth, (user) => {
   if (user) {
 
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("conteudo").style.display = "block";
 
-    // 🔥 RELATÓRIO SÓ DEPOIS DO LOGIN
+    // 🔥 CARREGA RELATÓRIO (SÓ DEPOIS DO LOGIN)
     onValue(ref(db, "pedidos"), (snapshot) => {
 
       let dados = snapshot.val();
@@ -134,64 +141,48 @@ onAuthStateChanged(auth, (user) => {
 
       if (!dados) return;
 
-      Object;
-// 🔥 RELATÓRIO (corrigido)
-onValue(ref(db, "pedidos"), (snapshot) => {
+      Object.values(dados).forEach(pedido => {
 
-  let dados = snapshot.val();
+        if (pedido.status === "finalizado" || pedido.status === "entregue") {
+          totalVendas += Number(pedido.total || 0);
+        }
 
-  // 🔥 limpa tela sempre
-  let totalVendas = 0;
-  let totalEntregas = 0;
-  let motoboys = {};
+        if (pedido.tipo === "delivery" && pedido.status === "entregue") {
+          totalEntregas++;
 
-  document.getElementById("vendas").innerText = "R$ 0";
-  document.getElementById("entregas").innerText = "0";
-  document.getElementById("valorEntregas").innerText = "R$ 0";
-  document.getElementById("motoboy").innerText = "R$ 0";
-  document.getElementById("listaMotoboys").innerHTML = "";
+          let nome = pedido.motoboy || "Não informado";
 
-  if (!dados) return;
+          if (!motoboys[nome]) {
+            motoboys[nome] = 0;
+          }
 
-  Object.values(dados).forEach(pedido => {
+          motoboys[nome]++;
+        }
 
-    if (pedido.status === "finalizado" || pedido.status === "entregue") {
-      totalVendas += Number(pedido.total || 0);
-    }
+      });
 
-    if (pedido.tipo === "delivery" && pedido.status === "entregue") {
-      totalEntregas++;
+      let valorMotoboy = totalEntregas * 5;
 
-      let nome = pedido.motoboy || "Não informado";
+      document.getElementById("vendas").innerText = "R$ " + totalVendas.toFixed(2);
+      document.getElementById("entregas").innerText = totalEntregas;
+      document.getElementById("valorEntregas").innerText = "R$ " + totalVendas.toFixed(2);
+      document.getElementById("motoboy").innerText = "R$ " + valorMotoboy.toFixed(2);
 
-      if (!motoboys[nome]) {
-        motoboys[nome] = 0;
-      }
+      let lista = "";
 
-      motoboys[nome]++;
-    }
+      Object.entries(motoboys).forEach(([nome, qtd]) => {
+        let valor = qtd * 5;
+        lista += `<div>${nome} → ${qtd} entregas → R$ ${valor}</div>`;
+      });
 
-  });
+      document.getElementById("listaMotoboys").innerHTML = lista;
 
-  let valorMotoboy = totalEntregas * 5;
+    });
 
-  document.getElementById("vendas").innerText = "R$ " + totalVendas.toFixed(2);
-  document.getElementById("entregas").innerText = totalEntregas;
-  document.getElementById("valorEntregas").innerText = "R$ " + totalVendas.toFixed(2);
-  document.getElementById("motoboy").innerText = "R$ " + valorMotoboy.toFixed(2);
-
-  let lista = "";
-
-  Object.entries(motoboys).forEach(([nome, qtd]) => {
-    let valor = qtd * 5;
-    lista += `<div>${nome} → ${qtd} entregas → R$ ${valor}</div>`;
-  });
-
-  document.getElementById("listaMotoboys").innerHTML = lista;
-
+  }
 });
 
-// 🔥 GERAR PDF
+// 🔥 PDF
 async function gerarPDF() {
   const { jsPDF } = window.jspdf;
   let doc = new jsPDF();
@@ -202,34 +193,19 @@ async function gerarPDF() {
 
   const snapshot = await get(ref(db, "pedidos"));
 
-  if (!snapshot.exists()) {
-    alert("Sem dados");
-    return;
-  }
+  if (!snapshot.exists()) return;
 
   snapshot.forEach((item) => {
-    let id = item.key;
     let p = item.val();
 
-    let texto = `ID: ${id}
-Cliente: ${p.cliente}
-Pedido: ${p.pedido}
-Total: R$ ${p.total}
-Status: ${p.status}`;
-
-    doc.text(texto, 10, y);
-    y += 30;
-
-    if (y > 270) {
-      doc.addPage();
-      y = 10;
-    }
+    doc.text(`Cliente: ${p.cliente} - R$ ${p.total}`, 10, y);
+    y += 10;
   });
 
   doc.save("relatorio.pdf");
 }
 
-// 🔥 RESET COMPLETO
+// 🔥 RESET
 window.resetar = async function() {
 
   let senha = prompt("Digite a senha:");
@@ -247,6 +223,6 @@ window.resetar = async function() {
 };
 
 </script>
-</div>
+
 </body>
 </html>
