@@ -144,7 +144,15 @@ const db = getDatabase(app);
 let pedidos = [];
 let produtos = [];
 let total= 0;
+let ultimoPedidoId = null;
 
+window.pagarPix = function() {
+  if (!ultimoPedidoId) return;
+
+  window.open("https://mpago.la/SEU_LINK_AQUI");
+
+  // opcional: marcar como aguardando pagamento
+};
 // CARREGAR PRODUTOS
 onValue(ref(db, "produtos"), (snapshot) => {
   produtos = [];
@@ -196,17 +204,7 @@ total += produto.preco;
 
 
 // ADICIONAR MANUAL (opcional)
-window.adicionarManual = function() {
-  let obs = document.getElementById("obs").value;
 
-  pedidos.push({
-    nome: "Item manual",
-    obs: obs
-  });
-
-  document.getElementById("obs").value = "";
-  atualizarTela();
-}
 
 // ATUALIZAR LISTA
 function atualizarTela() {
@@ -245,17 +243,27 @@ window.enviar = function() {
     `${p.nome} (${p.obs || "sem observação"})`
   ).join("\n");
 
-  push(ref(db, "pedidos"), {
-    cliente: cliente,
-    telefone: telefone,
-    endereco: endereco || "Retirada no local",
-    origem: "cliente",
-    pedido: resumo,
-    total: total,
-    hora: new Date().toLocaleTimeString(),
-    formaPagamento: formaPagamento,
-    statusPagamento: "pendente",
-  });
+ push(ref(db, "pedidos"), {
+  cliente: cliente,
+  telefone: telefone,
+  endereco: endereco || "Retirada no local",
+  origem: "cliente",
+  pedido: resumo,
+  total: total,
+  hora: new Date().toLocaleTimeString(),
+  formaPagamento: formaPagamento,
+  statusPagamento: "pendente",
+}).then((ref) => {
+
+  ultimoPedidoId = ref.key;
+
+  if (formaPagamento === "pix") {
+    document.getElementById("pagamentoBox").style.display = "block";
+  } else {
+    alert("Pedido enviado!");
+  }
+
+});
   if (formaPagamento === "pix") {
   window.open("https://mpago.la/SEU_LINK_AQUI");
 }
