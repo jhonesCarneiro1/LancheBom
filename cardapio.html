@@ -130,7 +130,25 @@ const firebaseConfig = {
   appId: "1:442622892318:web:af6a12026d2212b4d2510f",
   measurementId: "G-4EBW5J014C"
 };
+document.getElementById("telefone").addEventListener("input", function() {
+  this.value = this.value.replace(/\D/g, "");
+});
+  document.getElementById("cep").addEventListener("blur", function() {
+  let cep = this.value.replace(/\D/g, "");
 
+  if (cep.length !== 8) return;
+
+  fetch(`https://viacep.com.br/ws/${cep}/json/`)
+    .then(res => res.json())
+    .then(dados => {
+      if (!dados.erro) {
+        document.getElementById("endereco").value =
+          dados.logradouro + ", " +
+          dados.bairro + " - " +
+          dados.localidade;
+      }
+    });
+});
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
