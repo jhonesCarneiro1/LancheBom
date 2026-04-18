@@ -128,19 +128,22 @@ if (jaLiberou) {
   liberado = true;
   document.getElementById("btnSom").style.display = "none";
 }
-
+//funcao som
 window.ativarSom = function() {
   som.play().then(() => {
     som.pause();
     som.currentTime = 0;
-    liberado = true;
 
+    liberado = true;
     localStorage.setItem("somLiberado", "1");
 
     document.getElementById("btnSom").style.display = "none";
+
+    alert("🔔 Som ativado!");
+  }).catch(() => {
+    alert("Clique novamente para ativar o som");
   });
 };
-
 // 📥 PEDIDOS
 onChildAdded(ref(db, "pedidos"), (snapshot) => {
   let p = snapshot.val();
