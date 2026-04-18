@@ -211,6 +211,11 @@ function atualizarTela() {
 
   document.getElementById("total").innerText = total;
 }
+  <select id="pagamento">
+  <option value="entrega">Pagar na entrega</option>
+  <option value="pix">PIX</option>
+  <option value="cartao">Cartão online</option>
+</select>
 // ENVIAR PEDIDO
 window.enviar = function() {
   let formaPagamento = document.getElementById("pagamento").value;
