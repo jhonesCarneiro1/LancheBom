@@ -8,12 +8,12 @@
   "icons": [
     {
       "src": "lgoLanchebom.png",
-      "sizes": "822x514",
+      "sizes": "399x396",
       "type": "image/png"
     },
     {
       "src": "unnamed.jpg",
-      "sizes": "822x5142",
+      "sizes": "191x191",
       "type": "image/jpeg"
     }
   ]
