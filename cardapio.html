@@ -246,10 +246,11 @@ window.enviar = function() {
 
   ultimoPedidoId = ref.key;
 
-  if (formaPagamento === "pix") {
-    document.getElementById("pagamentoBox").style.display = "block";
+ // 🔥 COLOCA AQUI
+  if (formaPagamento === "pix" || formaPagamento === "cartao") {
+    window.open("https://mpago.la/SEU_LINK_AQUI");
   } else {
-    alert("Pedido enviado!");
+    alert("Pedido enviado! Pague na entrega.");
   }
 
 });
