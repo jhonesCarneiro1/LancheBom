@@ -41,7 +41,13 @@ button {
 </head>
 
 <body>
+<div id="loginBox">
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="senha" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+</div>
 
+<div id="conteudo" style="display:none;">
 <h2>📊 Relatório</h2>
 
 <div class="box">
@@ -78,8 +84,7 @@ button {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, onValue, get, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from ...
 const firebaseConfig = {
   apiKey: "SUA_KEY",
   authDomain: "lanchebom-991d9.firebaseapp.com",
@@ -95,8 +100,23 @@ const db = getDatabase(app);
 
 // login
 const auth = getAuth(app);
-signInWithEmailAndPassword(auth, "SEU_EMAIL", "SUA_SENHA");
+// 🔐 LOGIN MANUAL
+window.login = function() {
+  let email = document.getElementById("email").value;
+  let senha = document.getElementById("senha").value;
 
+  signInWithEmailAndPassword(auth, email, senha)
+    .then(() => console.log("logado"))
+    .catch((e) => alert("Erro: " + e.message));
+};
+
+// 🔓 LIBERAR TELA
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("conteudo").style.display = "block";
+  }
+});
 // 🔥 RELATÓRIO (corrigido)
 onValue(ref(db, "pedidos"), (snapshot) => {
 
@@ -209,6 +229,6 @@ window.resetar = async function() {
 };
 
 </script>
-
+</div>
 </body>
 </html>
