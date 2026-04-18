@@ -10,6 +10,9 @@ body {
   background: #111;
   color: #fff;
 }
+  #conteudo {
+  display: none;
+}
 h2 { text-align: center; }
 
 .pedido {
@@ -104,6 +107,12 @@ const lista = document.getElementById("lista");
 const som = document.getElementById("som");
 
 let liberado = false;
+  let jaLiberouSom = localStorage.getItem("somLiberado");
+
+if (jaLiberouSom) {
+  liberado = true;
+  document.getElementById("btnSom").style.display = "none";
+}
 
 // 🔐 LOGIN
 window.login = function() {
@@ -131,6 +140,9 @@ window.ativarSom = function() {
     som.pause();
     som.currentTime = 0;
     liberado = true;
+
+    localStorage.setItem("somLiberado", "1"); // 🔥 salva
+
     document.getElementById("btnSom").style.display = "none";
   });
 };
