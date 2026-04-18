@@ -251,6 +251,24 @@ window.enviar = function() {
 
   ultimoPedidoId = ref.key;
 
+  if (formaPagamento === "pix" || formaPagamento === "cartao") {
+    window.open("https://mpago.la/SEU_LINK_AQUI");
+  } else {
+    alert("Pedido enviado! Pague na entrega.");
+  }
+
+  // 🔥 LIMPAR PEDIDO (faltava isso)
+  pedidos = [];
+  total = 0;
+  atualizarTela();
+
+  document.getElementById("cliente").value = "";
+  document.getElementById("telefone").value = "";
+  document.getElementById("endereco").value = "";
+
+});
+  ultimoPedidoId = ref.key;
+
  // 🔥 COLOCA AQUI
   if (formaPagamento === "pix" || formaPagamento === "cartao") {
     window.open("https://mpago.la/SEU_LINK_AQUI");
