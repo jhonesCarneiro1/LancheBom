@@ -139,7 +139,7 @@ let pedidos = [];
 let produtos = [];
 let total = 0;
 let formaPagamento = "entrega";
-
+let chavePix = "SEU_PIX_AQUI"; // telefone, cpf ou email
 /* 🔥 ESCOLHER PAGAMENTO */
 window.selecionarPagamento = function(tipo, el) {
   formaPagamento = tipo;
@@ -255,22 +255,43 @@ window.enviar = function() {
     statusPagamento: "pendente",
   }).then(() => {
 
-    if (formaPagamento === "pix") {
-      window.open("https://mpago.la/SEU_LINK_AQUI");
-    } else {
-      alert("Pedido enviado! Pague na entrega.");
-    }
+  if (formaPagamento === "pix") {
 
-    pedidos = [];
-    total = 0;
-    atualizarTela();
+    let mensagem = `
+💰 PAGAMENTO VIA PIX
 
-    document.getElementById("cliente").value = "";
-    document.getElementById("telefone").value = "";
-    document.getElementById("endereco").value = "";
+Valor: R$ ${total}
 
-  });
-};
+Chave PIX:
+${chavePix}
+
+📲 Envie o comprovante no WhatsApp para confirmar seu pedido.
+    `;
+
+    alert(mensagem);
+
+    let texto = encodeURIComponent(
+`Pedido realizado!\nTotal: R$ ${total}\nVou enviar o comprovante do PIX.`
+    );
+
+    window.open(`https://wa.me/55SEUNUMERO?text=${texto}`);
+
+  } else {
+
+    alert("Pedido enviado! Pague na entrega.");
+
+  }
+
+  // 🔥 LIMPAR PEDIDO (muito importante)
+  pedidos = [];
+  total = 0;
+  atualizarTela();
+
+  document.getElementById("cliente").value = "";
+  document.getElementById("telefone").value = "";
+  document.getElementById("endereco").value = "";
+
+});
 </script>
 
 </body>
