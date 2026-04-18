@@ -10,10 +10,12 @@ body {
   background: #111;
   color: #fff;
 }
-  #conteudo {
+
+h2 { text-align: center; }
+
+#conteudo {
   display: none;
 }
-h2 { text-align: center; }
 
 .pedido {
   background: #222;
@@ -33,6 +35,14 @@ button {
   border-radius: 5px;
 }
 
+.btn-local {
+  background: #2196f3;
+}
+
+.btn-entrega {
+  background: #4caf50;
+}
+
 .info { font-size: 14px; color: #ccc; }
 
 #btnSom {
@@ -44,57 +54,43 @@ button {
   height: 70px;
   font-size: 26px;
 }
-
-.btn-local {
-  background: #2196f3;
-}
-
-.btn-entrega {
-  background: #4caf50;
-}
 </style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN -->
+<!-- LOGIN -->
 <div id="loginBox">
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="senha" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
 
-<!-- 🔥 CONTEÚDO PROTEGIDO -->
-<div id="conteudo" style="display:none;">
+<!-- CONTEÚDO -->
+<div id="conteudo">
+  <h2>🍳 Pedidos</h2>
+  <div id="lista"></div>
 
-<h2>🍳 Pedidos</h2>
-<div id="lista"></div>
+  <audio id="som">
+    <source src="https://raw.githubusercontent.com/jhonesCarneiro1/LancheBom/main/lanchepedido.mp3" type="audio/mpeg">
+  </audio>
 
-<audio id="som">
-  <source src="https://raw.githubusercontent.com/jhonesCarneiro1/LancheBom/main/lanchepedido.mp3" type="audio/mpeg">
-</audio>
-
-<button id="btnSom" onclick="ativarSom()">🔊</button>
-
+  <button id="btnSom" onclick="ativarSom()">🔊</button>
 </div>
 
-<!-- 🔥 SCRIPT -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getDatabase, ref, onChildAdded, push, get, update } 
-from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
+import { getDatabase, ref, onChildAdded, get, push, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
-// CONFIG
+// 🔥 CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
+  apiKey: "SUA_API_AQUI",
   authDomain: "lanchebom-991d9.firebaseapp.com",
   databaseURL: "https://lanchebom-991d9-default-rtdb.firebaseio.com",
   projectId: "lanchebom-991d9",
-  storageBucket: "lanchebom-991d9.appspot.com",
+  storageBucket: "lanchebom-991d9.firebasestorage.app",
   messagingSenderId: "442622892318",
   appId: "1:442622892318:web:af6a12026d2212b4d2510f"
 };
@@ -107,12 +103,6 @@ const lista = document.getElementById("lista");
 const som = document.getElementById("som");
 
 let liberado = false;
-  let jaLiberouSom = localStorage.getItem("somLiberado");
-
-if (jaLiberouSom) {
-  liberado = true;
-  document.getElementById("btnSom").style.display = "none";
-}
 
 // 🔐 LOGIN
 window.login = function() {
@@ -120,106 +110,96 @@ window.login = function() {
   let senha = document.getElementById("senha").value;
 
   signInWithEmailAndPassword(auth, email, senha)
-    .then(() => console.log("logado"))
-    .catch((e) => alert(e.message));
+    .catch((e) => alert("Erro: " + e.message));
 };
 
-// 🔥 LIBERAR TELA APÓS LOGIN
+// 🔓 LIBERAR TELA
 onAuthStateChanged(auth, (user) => {
   if (user) {
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("conteudo").style.display = "block";
-
-    iniciarCozinha(); // 👈 ESSENCIAL
   }
 });
 
-// 🔊 SOM
+// 🔊 SOM COM MEMÓRIA
+let jaLiberou = localStorage.getItem("somLiberado");
+
+if (jaLiberou) {
+  liberado = true;
+  document.getElementById("btnSom").style.display = "none";
+}
+
 window.ativarSom = function() {
   som.play().then(() => {
     som.pause();
     som.currentTime = 0;
     liberado = true;
 
-    localStorage.setItem("somLiberado", "1"); // 🔥 salva
+    localStorage.setItem("somLiberado", "1");
 
     document.getElementById("btnSom").style.display = "none";
   });
 };
 
-// 🔥 INICIAR COZINHA (SÓ DEPOIS DO LOGIN)
-function iniciarCozinha() {
+// 📥 PEDIDOS
+onChildAdded(ref(db, "pedidos"), (snapshot) => {
+  let p = snapshot.val();
 
-  onChildAdded(ref(db, "pedidos"), (snapshot) => {
-    let p = snapshot.val();
+  if (
+    p.status === "pronto" || 
+    p.status === "finalizado" || 
+    p.status === "entregue"
+  ) return;
 
-    if (
-      p.status === "pronto" || 
-      p.status === "finalizado" || 
-      p.status === "entregue"
-    ) return;
+  if (liberado) {
+    som.currentTime = 0;
+    som.play().catch(() => {});
+  }
 
-    if (liberado) {
-      som.currentTime = 0;
-      som.play().catch(() => {});
-    }
+  let div = document.createElement("div");
+  div.className = "pedido";
 
-    let div = document.createElement("div");
-    div.className = "pedido";
+  let botoes = "";
 
-     // 🎯 COR POR TIPO
-    if (p.tipo === "local") {
-      div.style.borderLeft = "5px solid #2196f3";
-    } else {
-      div.style.borderLeft = "5px solid #4caf50";
-    }
-   // 🎯 BOTÃO DINÂMICO
-    let botoes = "";
-
-    if (p.tipo === "local") {
-      botoes = `
-        <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
-          🏪 Pronto (Local)
-        </button>
-      `;
-    } else {
-      botoes = `
-        <button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
-          🛵 Enviar para Entrega
-        </button>
-      `;
-    }
-
-    div.innerHTML = `
-      <strong>👤 ${p.cliente}</strong><br>
-      <span class="info">📞 ${p.telefone || "não informado"}</span><br>
-      <span class="info">📍 ${p.endereco || "retirada no local"}</span><br>
-      <span class="info">🕒 ${p.hora}</span><br><br>
-
-      ${p.pedido.replace(/\n/g, "<br>")}
-
-      <br><br>
-      <strong>💰 Total: R$ ${p.total || 0}</strong>
-
-      ${botoes}
+  if (p.tipo === "local") {
+    botoes = `
+      <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
+        🏪 Pronto (Local)
+      </button>
     `;
+  } else {
+    botoes = `
+      <button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
+        🛵 Enviar para Entrega
+      </button>
+    `;
+  }
 
-    lista.prepend(div);
-  });
+  div.innerHTML = `
+    <strong>👤 ${p.cliente}</strong><br>
+    <span class="info">📞 ${p.telefone || "não informado"}</span><br>
+    <span class="info">📍 ${p.endereco || "retirada no local"}</span><br>
+    <span class="info">🕒 ${p.hora}</span><br><br>
 
-}
+    ${p.pedido.replace(/\n/g, "<br>")}
 
-// 🛵 ENTREGA
+    <br><br>
+    <strong>💰 Total: R$ ${p.total || 0}</strong>
+
+    ${botoes}
+  `;
+
+  lista.prepend(div);
+});
+
+// 🛵 ENVIAR ENTREGA
 window.enviarEntrega = function(id, botao) {
   if (!confirm("Enviar para entrega?")) return;
 
   let pedidoRef = ref(db, "pedidos/" + id);
 
   get(pedidoRef).then((snapshot) => {
-    if (!snapshot.exists()) {
-      alert("Pedido não encontrado");
-      return;
-    }
+    if (!snapshot.exists()) return;
 
     let dados = snapshot.val();
 
@@ -227,9 +207,7 @@ window.enviarEntrega = function(id, botao) {
       ...dados,
       pedidoId: id,
       status: "novo"
-    })
-    .then(() => {
-      console.log("✅ Enviado pro motoboy");
+    }).then(() => {
 
       update(ref(db, "pedidos/" + id), {
         status: "pronto",
@@ -237,10 +215,11 @@ window.enviarEntrega = function(id, botao) {
       });
 
       botao.parentElement.remove();
-    })
-    .catch((erro
+    });
+  });
+};
 
-// 🏪 LOCAL
+// 🏪 FINALIZAR LOCAL
 window.finalizarLocal = function(id, botao) {
   if (!confirm("Finalizar pedido local?")) return;
 
@@ -251,7 +230,6 @@ window.finalizarLocal = function(id, botao) {
 
   botao.parentElement.remove();
 };
-
 </script>
 
 </body>
