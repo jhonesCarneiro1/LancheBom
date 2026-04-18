@@ -7,14 +7,14 @@
   "theme_color": "#e53935",
   "icons": [
     {
-      "src": "lgoLanchebom.png",
-      "sizes": "399x396",
-      "type": "image/png"
-    },
-    {
       "src": "unnamed.png",
       "sizes": "191x191",
       "type": "image/jpeg"
+    },
+    {
+      "src": "lgoLanchebom.png",
+      "sizes": "399x396",
+      "type": "image/png"
     }
   ]
 }
