@@ -122,12 +122,14 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // 🔊 SOM COM MEMÓRIA
-let jaLiberou = localStorage.getItem("somLiberado");
+//let jaLiberou = localStorage.getItem("somLiberado");
 
-if (jaLiberou) {
-  liberado = true;
-  document.getElementById("btnSom").style.display = "none";
-}
+//if (jaLiberou) {
+//  liberado = true;
+//  document.getElementById("btnSom").style.display = "none";
+  
+//}
+  let liberado = false;
 //funcao som
 window.ativarSom = function() {
   som.play().then(() => {
