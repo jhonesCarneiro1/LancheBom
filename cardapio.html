@@ -58,9 +58,25 @@ button {
   object-fit: cover;
   border-radius: 8px;
 }
-</style>
 
+/* 🔥 BOTÕES DE PAGAMENTO */
+.pagamento {
+  flex: 1;
+  background: #333;
+}
+
+.pagamento.ativo {
+  background: #4caf50;
+}
+
+#pagamentoBox {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+</style>
 </head>
+
 <body>
 
 <div class="container">
@@ -68,31 +84,33 @@ button {
 <h2>🍔 Fazer Pedido</h2>
 
 <input type="text" id="cliente" placeholder="Seu nome">
-<input type="tel" id="telefone" placeholder="Seu WhatsApp" pattern="[0-9]*" inputmode="numeric">
-  <input type="text" id="cep" placeholder="CEP">
-  <input type="text" id="endereco" placeholder="Seu endereço (ou retirar no local)">
+<input type="tel" id="telefone" placeholder="Seu WhatsApp">
+<input type="text" id="cep" placeholder="CEP">
+<input type="text" id="endereco" placeholder="Seu endereço">
 
 <img id="foto" style="width:100%; margin-bottom:10px; border-radius:10px;">
 
-<!-- Cardápio -->
+<!-- CARDÁPIO -->
 <div id="cardapio"></div>
 
-<textarea id="obs" placeholder="Ex: sem cebola..."></textarea>
+<textarea id="obs" placeholder="Observação..."></textarea>
 
-  <select id="pagamento">
-  <option value="entrega">Pagar na entrega</option>
-  <option value="pix">Pix / Cartão online</option>
-</select>
-  
+<!-- 🔥 PAGAMENTO MELHORADO -->
+<div id="pagamentoBox">
+  <button type="button" class="pagamento ativo" onclick="selecionarPagamento('entrega', this)">💵 Entrega</button>
+  <button type="button" class="pagamento" onclick="selecionarPagamento('pix', this)">💳 PIX / Cartão</button>
+</div>
 
 <hr>
 
 <div id="lista"></div>
 
 <hr>
-<div style="font-weight:bold; margin-top:10px;">
+
+<div style="font-weight:bold;">
   Total: R$ <span id="total">0</span>
 </div>
+
 <button onclick="enviar()">📤 Enviar Pedido</button>
 
 </div>
@@ -101,45 +119,39 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-  
+/* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
-  apiKey: "AIzaSyCm4W6_B_aSWld-vi_5pjwP5uowZVHirlY",
-  authDomain: "lanchebom-991d9.firebaseapp.com",
-  databaseURL: "https://lanchebom-991d9-default-rtdb.firebaseio.com",
-  projectId: "lanchebom-991d9",
-  storageBucket: "lanchebom-991d9.firebasestorage.app",
-  messagingSenderId: "442622892318",
-  appId: "1:442622892318:web:af6a12026d2212b4d2510f",
-  measurementId: "G-4EBW5J014C"
+  apiKey: "SUA_KEY",
+  authDomain: "SEU_DOMINIO",
+  databaseURL: "SUA_URL",
 };
-document.getElementById("telefone").addEventListener("input", function() {
-  this.value = this.value.replace(/\D/g, "");
-});
-  document.getElementById("cep").addEventListener("blur", function() {
-  let cep = this.value.replace(/\D/g, "");
 
-  if (cep.length !== 8) return;
-
-  fetch(`https://viacep.com.br/ws/${cep}/json/`)
-    .then(res => res.json())
-    .then(dados => {
-      if (!dados.erro) {
-        document.getElementById("endereco").value =
-          dados.logradouro + ", " +
-          dados.bairro + " - " +
-          dados.localidade;
-      }
-    });
-});
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-
+/* 🔥 VARIÁVEIS GLOBAIS (IMPORTANTE) */
 let pedidos = [];
 let produtos = [];
-let total= 0;
+let total = 0;
+let formaPagamento = "entrega";
 
-// CARREGAR PRODUTOS
+/* 🔥 ESCOLHER PAGAMENTO */
+window.selecionarPagamento = function(tipo, el) {
+  formaPagamento = tipo;
+
+  document.querySelectorAll(".pagamento").forEach(btn => {
+    btn.classList.remove("ativo");
+  });
+
+  el.classList.add("ativo");
+};
+
+/* 🔥 TELEFONE NUMÉRICO */
+document.getElementById("telefone").addEventListener("input", function() {
+  this.value = this.value.replace(/\D/g, "");
+});
+
+/* 🔥 CARREGAR PRODUTOS */
 onValue(ref(db, "produtos"), (snapshot) => {
   produtos = [];
 
@@ -150,7 +162,7 @@ onValue(ref(db, "produtos"), (snapshot) => {
   carregarProdutos();
 });
 
-// MONTAR CARDÁPIO
+/* 🔥 MOSTRAR CARDÁPIO */
 function carregarProdutos() {
   let div = document.getElementById("cardapio");
   div.innerHTML = "";
@@ -158,41 +170,38 @@ function carregarProdutos() {
   produtos.forEach((p, i) => {
     div.innerHTML += `
       <div class="card" onclick="selecionar(${i})">
-        <img src="${p.imagem || 'https://via.placeholder.com/150'}">
+        <img src="${p.imagem ? p.imagem : 'https://via.placeholder.com/150'}"
+             onerror="this.src='https://via.placeholder.com/150'">
         <strong>${p.nome}</strong><br>
         R$ ${p.preco}
       </div>
     `;
   });
 
-  // mostra primeira imagem
   if (produtos.length > 0) {
     document.getElementById("foto").src = produtos[0].imagem || "";
   }
 }
 
-// CLICAR NO PRODUTO
+/* 🔥 CLICAR NO PRODUTO */
 window.selecionar = function(index) {
   let produto = produtos[index];
 
   document.getElementById("foto").src = produto.imagem || "";
 
-  let obs = prompt("Observação? (ex: sem cebola)");
-pedidos.push({
-  nome: produto.nome,
-  preco: produto.preco,
-  obs: obs || ""
-});
+  let obs = prompt("Observação?");
 
-total += produto.preco;
+  pedidos.push({
+    nome: produto.nome,
+    preco: produto.preco,
+    obs: obs || ""
+  });
+
+  total += produto.preco;
   atualizarTela();
-}
+};
 
-
-// ADICIONAR MANUAL (opcional)
-
-
-// ATUALIZAR LISTA
+/* 🔥 ATUALIZAR TELA */
 function atualizarTela() {
   let lista = document.getElementById("lista");
   lista.innerHTML = "";
@@ -208,13 +217,14 @@ function atualizarTela() {
 
   document.getElementById("total").innerText = total;
 }
-// ENVIAR PEDIDO
+
+/* 🔥 ENVIAR PEDIDO */
 window.enviar = function() {
-  let formaPagamento = document.getElementById("pagamento").value;
+
   let cliente = document.getElementById("cliente").value;
   let telefone = document.getElementById("telefone").value;
   let endereco = document.getElementById("endereco").value;
-  
+
   if (!cliente || !telefone) {
     alert("Preencha nome e telefone");
     return;
@@ -230,33 +240,33 @@ window.enviar = function() {
   ).join("\n");
 
   push(ref(db, "pedidos"), {
-    cliente: cliente,
-    telefone: telefone,
-    endereco: endereco || "Retirada no local",
-    origem: "cliente",
+    cliente,
+    telefone,
+    endereco: endereco || "Retirada",
     pedido: resumo,
-    total: total,
+    total,
     hora: new Date().toLocaleTimeString(),
-    formaPagamento: formaPagamento,
+    formaPagamento,
     statusPagamento: "pendente",
+  }).then(() => {
+
+    if (formaPagamento === "pix") {
+      window.open("https://mpago.la/SEU_LINK_AQUI");
+    } else {
+      alert("Pedido enviado! Pague na entrega.");
+    }
+
+    pedidos = [];
+    total = 0;
+    atualizarTela();
+
+    document.getElementById("cliente").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("endereco").value = "";
+
   });
-  if (formaPagamento === "pix") {
-  window.open("https://mpago.la/SEU_LINK_AQUI");
-}
-
-  alert("Pedido enviado!");
-
-  pedidos = [];
-  total = 0;
-
-  atualizarTela();
-
-  document.getElementById("cliente").value = "";
-  document.getElementById("telefone").value = "";
-  document.getElementById("endereco").value = "";
-}
+};
 </script>
 
 </body>
 </html>
-
