@@ -1,7 +1,7 @@
 {
   "name": "Lanche Bom",
   "short_name": "Lanches",
-  "start_url": "/",
+  "start_url": "/cardapio.html",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#e53935",
