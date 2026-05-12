@@ -2,7 +2,14 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/png" href="lgoLanchebom.png">
+
 <title>Cozinha</title>
+
+<link rel="manifest" href="manifest-cozinha.json">
+
+<meta name="theme-color" content="#abaf4c">
+
 
 <style>
 body {
@@ -56,7 +63,22 @@ button {
 }
 </style>
 </head>
-
+<button 
+style="
+position:fixed;
+top:40px;
+left:10px;
+z-index:9999;
+background:#333;
+color:white;
+padding:10px;
+border:none;
+border-radius:8px;
+width:auto;
+"
+onclick="window.location.href='controle.html'">
+⬅️ Voltar
+</button>
 <body>
 
 <!-- LOGIN -->
@@ -80,9 +102,10 @@ button {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getDatabase, ref, onChildAdded, get, push, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+import { getDatabase, ref, onChildAdded, get, push, update, set } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+
 
 // 🔥 CONFIG
 const firebaseConfig = {
@@ -164,22 +187,27 @@ onChildAdded(ref(db, "pedidos"), (snapshot) => {
   let div = document.createElement("div");
   div.className = "pedido";
 
-  let botoes = "";
+  
+  let botoes = `
+  <button onclick="marcarPreparo('${snapshot.key}', this)">
+    👨‍🍳 Em preparo
+  </button>
+`;
 
-  if (p.tipo === "local") {
-    botoes = `
-      <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
-        🏪 Pronto (Local)
-      </button>
-    `;
-  } else {
-    botoes = `
-      <button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
-        🛵 Enviar para Entrega
-      </button>
-    `;
-  }
-
+if (p.tipo === "local") {
+  botoes += `
+    <button class="btn-local" onclick="finalizarLocal('${snapshot.key}', this)">
+      🏪 Pronto (Local)
+    </button>
+  `;
+} else {
+  botoes += `
+    <button class="btn-entrega" onclick="enviarEntrega('${snapshot.key}', this)">
+      🛵 Enviar para Entrega
+    </button>
+  `;
+}
+  
   div.innerHTML = `
     <strong>👤 ${p.cliente}</strong><br>
     <span class="info">📞 ${p.telefone || "não informado"}</span><br>
@@ -196,34 +224,64 @@ onChildAdded(ref(db, "pedidos"), (snapshot) => {
 
   lista.prepend(div);
 });
+// BOTÃO PREPARO
+window.marcarPreparo = function(id, botao) {
+  const pedidoRef = ref(db, "pedidos/" + id);
 
-// 🛵 ENVIAR ENTREGA
-window.enviarEntrega = function(id, botao) {
-  if (!confirm("Enviar para entrega?")) return;
-
-  let pedidoRef = ref(db, "pedidos/" + id);
-
-  get(pedidoRef).then((snapshot) => {
-    if (!snapshot.exists()) return;
-
-    let dados = snapshot.val();
-
-    push(ref(db, "entregas_ativas"), {
-      ...dados,
-      pedidoId: id,
-      status: "novo"
-    }).then(() => {
-
-      update(ref(db, "pedidos/" + id), {
-        status: "pronto",
-        tipo: "delivery"
-      });
-
-      botao.parentElement.remove();
-    });
-  });
+  update(pedidoRef, {
+    status: "preparo" // Isso deve ser EXATAMENTE igual ao que o cardápio lê
+  }).then(() => {
+    botao.innerText = "👨‍🍳 Preparando...";
+    botao.style.background = "#ff9800";
+    botao.disabled = true;
+    console.log("Status 'preparo' enviado para o pedido: " + id);
+  }).catch(erro => alert("Erro ao atualizar preparo: " + erro.message));
 };
 
+// BOTÃO MOTOBOY
+window.enviarEntrega = function(id, botao) {
+    console.log("Botão clicado! ID do pedido:", id); // Teste 1
+
+    if (!confirm("Enviar para entrega?")) return;
+
+    const pedidoRef = ref(db, "pedidos/" + id);
+
+    get(pedidoRef).then((snapshot) => {
+        console.log("Snapshot recebido do Firebase:", snapshot.exists()); // Teste 2
+
+        if (!snapshot.exists()) {
+            alert("Pedido não encontrado no banco de dados!");
+            return;
+        }
+
+        const dados = snapshot.val();
+        console.log("Dados do pedido recuperados:", dados); // Teste 3
+
+        // 1. Atualiza o status original
+        update(pedidoRef, { status: "saiu" })
+            .then(() => {
+                console.log("Status 'saiu' atualizado com sucesso!"); // Teste 4
+
+                // 2. Envia para entregas_ativas
+                return set(ref(db, "entregas_ativas/" + id), {
+                    ...dados,
+                    pedidoId: id,
+                    status: "saiu"
+                });
+            })
+            .then(() => {
+                console.log("Cópia enviada para entregas_ativas!"); // Teste 5
+                botao.parentElement.remove();
+                alert("Motoboy avisado!");
+            })
+            .catch((erro) => {
+                console.error("ERRO DETECTADO:", erro); // Aqui aparecerá o Permission Denied se existir
+                alert("Erro ao enviar: " + erro.message);
+            });
+    }).catch((erro) => {
+        console.error("Erro ao buscar pedido:", erro);
+    });
+};
 // 🏪 FINALIZAR LOCAL
 window.finalizarLocal = function(id, botao) {
   if (!confirm("Finalizar pedido local?")) return;
@@ -239,3 +297,4 @@ window.finalizarLocal = function(id, botao) {
 
 </body>
 </html>
+
