@@ -2,12 +2,13 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+    <!-- Esta é a linha que faz a mágica: -->
+   <link rel="icon" type="image/png" href="lgoLanchebom.png">
+
 <title>Cardápio Online</title>
-
-
-  <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e53935">
-  <style>
+<style>
 body {
   font-family: Arial;
   background: #111;
@@ -103,24 +104,39 @@ button {
   <button type="button" class="pagamento ativo" onclick="selecionarPagamento('entrega', this)">💵 Entrega</button>
   <button type="button" class="pagamento" onclick="selecionarPagamento('pix', this)">💳 PIX / Cartão</button>
 </div>
-
+<div id="statusPedido" style="display:none; background:#222; padding:15px; margin-top:10px; border-radius:10px;">
+  <h3>📦 Seu pedido</h3>
+  <div id="statusTexto">Aguardando...</div>
+</div>
 <hr>
 
 <div id="lista"></div>
 
 <hr>
 
-<div style="font-weight:bold;">
-  Total: R$ <span id="total">0</span>
+<!-- Resumo detalhado para o cliente -->
+<div style="background: #222; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px solid #333;">
+  <p style="display: flex; justify-content: space-between; margin: 5px 0;">
+    <span>Produtos:</span> 
+    <span>R$ <span id="valorProdutos">0.00</span></span>
+  </p>
+  <p style="display: flex; justify-content: space-between; margin: 5px 0; color: #ffeb3b;">
+    <span>Taxa de Entrega:</span> 
+    <span>R$ <span id="valorTaxa">0.00</span></span>
+  </p>
+  <h3 style="display: flex; justify-content: space-between; margin: 10px 0; color: #4caf50; border-top: 1px solid #444; padding-top: 10px;">
+    <span>Total a Pagar:</span> 
+    <span>R$ <span id="total">0.00</span></span>
+  </h3>
 </div>
 
-<button onclick="enviar()">📤 Enviar Pedido</button>
-
-</div>
+<button onclick="enviar()" style="background: #4caf50; color: white; width: 100%; padding: 15px; font-size: 18px; border-radius: 8px; border: none; font-weight: bold;">
+  📤 Enviar Pedido
+</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+import { getDatabase, ref, push, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
 /* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
@@ -133,195 +149,249 @@ const firebaseConfig = {
   appId: "1:442622892318:web:af6a12026d2212b4d2510f",
   measurementId: "G-4EBW5J014C"
 };
-document.getElementById("telefone").addEventListener("input", function() {
-  this.value = this.value.replace(/\D/g, "");
-});
-  document.getElementById("cep").addEventListener("blur", function() {
-  let cep = this.value.replace(/\D/g, "");
-
-  if (cep.length !== 8) return;
-
-  fetch(`https://viacep.com.br/ws/${cep}/json/`)
-    .then(res => res.json())
-    .then(dados => {
-      if (!dados.erro) {
-        document.getElementById("endereco").value =
-          dados.logradouro + ", " +
-          dados.bairro + " - " +
-          dados.localidade;
-      }
-    });
-});
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* 🔥 VARIÁVEIS GLOBAIS (IMPORTANTE) */
+/* 🔥 VARIÁVEIS GLOBAIS */
 let pedidos = [];
 let produtos = [];
 let total = 0;
 let formaPagamento = "entrega";
-let chavePix = "SEU_PIX_AQUI"; // telefone, cpf ou email
-/* 🔥 ESCOLHER PAGAMENTO */
+let latDestino = null;
+let lonDestino = null;
+
+
+/* 📍 CONFIGURAÇÃO DA LANCHONETE (COORDINADAS REAIS GUAINASES) */
+
+const MINHA_LAT = -23.5435; 
+const MINHA_LON = -46.4024;
+// --- ESSA FUNÇÃO ESTAVA FALTANDO NO SEU CÓDIGO ---
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+/* 🔥 CEP AUTO-COMPLETAR */document.getElementById("cep").addEventListener("blur", function() {
+    let cep = this.value.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then(res => res.json())
+        .then(dados => {
+            if (!dados.erro) {
+                const rua = dados.logradouro;
+                const bairro = dados.bairro;
+                const cidade = dados.localidade;
+                const estado = dados.uf;
+                
+                // 1. Preenche o campo de endereço na tela
+                document.getElementById("endereco").value = `${rua}, ${bairro} - ${cidade}`;
+                
+                // 2. Prepara a busca do mapa com o bairro incluso
+                const buscaMapa = encodeURIComponent(`${rua}, ${bairro}, ${cidade}, Brazil`);
+                
+                // 3. Busca a localização
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${buscaMapa}&limit=1`)
+                    .then(r => r.json()) // Apenas uma vez aqui!
+                    .then(geo => {
+                        if (geo.length > 0) {
+                            latDestino = parseFloat(geo[0].lat);
+                            lonDestino = parseFloat(geo[0].lon);
+                            console.log("📍 Localizado:", latDestino, lonDestino);
+                        } else {
+                            // Plano B: Se não achou pela rua, tenta pelo CEP
+                            return fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${cep}&country=Brazil&limit=1`)
+                                .then(r => r.json())
+                                .then(geoCep => {
+                                    if (geoCep.length > 0) {
+                                        latDestino = parseFloat(geoCep[0].lat);
+                                        lonDestino = parseFloat(geoCep[0].lon);
+                                        console.log("📍 Localizado pelo CEP (Plano B)");
+                                    }
+                                });
+                        }
+                    })
+                    .catch(err => console.error("Erro no mapa:", err))
+                    .finally(() => {
+                        // 4. Calcula a taxa com as coordenadas obtidas
+                        atualizarTela(); 
+                    });
+            }
+        });
+});
+
+  //codigo do pagamento  
 window.selecionarPagamento = function(tipo, el) {
   formaPagamento = tipo;
-
-  document.querySelectorAll(".pagamento").forEach(btn => {
-    btn.classList.remove("ativo");
-  });
-
+  document.querySelectorAll(".pagamento").forEach(btn => btn.classList.remove("ativo"));
   el.classList.add("ativo");
 };
 
-/* 🔥 TELEFONE NUMÉRICO */
-document.getElementById("telefone").addEventListener("input", function() {
-  this.value = this.value.replace(/\D/g, "");
-});
-
-/* 🔥 CARREGAR PRODUTOS */
 onValue(ref(db, "produtos"), (snapshot) => {
   produtos = [];
-
-  snapshot.forEach(item => {
-    produtos.push(item.val());
-  });
-
+  snapshot.forEach(item => { produtos.push(item.val()); });
   carregarProdutos();
 });
 
-/* 🔥 MOSTRAR CARDÁPIO */
 function carregarProdutos() {
   let div = document.getElementById("cardapio");
   div.innerHTML = "";
-
   produtos.forEach((p, i) => {
     div.innerHTML += `
       <div class="card" onclick="selecionar(${i})">
-        <img src="${p.imagem ? p.imagem : 'https://via.placeholder.com/150'}"
-             onerror="this.src='https://via.placeholder.com/150'">
+        <img src="${p.imagem ? p.imagem : 'https://via.placeholder.com/150'}" onerror="this.src='https://via.placeholder.com/150'">
         <strong>${p.nome}</strong><br>
         R$ ${p.preco}
       </div>
     `;
   });
-
-  if (produtos.length > 0) {
-    document.getElementById("foto").src = produtos[0].imagem || "";
-  }
+  if (produtos.length > 0) document.getElementById("foto").src = produtos[0].imagem || "";
 }
 
-/* 🔥 CLICAR NO PRODUTO */
 window.selecionar = function(index) {
   let produto = produtos[index];
-
   document.getElementById("foto").src = produto.imagem || "";
-
   let obs = prompt("Observação?");
-
-  pedidos.push({
-    nome: produto.nome,
-    preco: produto.preco,
-    obs: obs || ""
-  });
-
-  total += produto.preco;
+  pedidos.push({ nome: produto.nome, preco: produto.preco, obs: obs || "" });
+  total += Number(produto.preco); 
   atualizarTela();
 };
 
-/* 🔥 ATUALIZAR TELA */
+// 🔥 FUNÇÃO ÚNICA E CORRIGIDA: ATUALIZAR A TELA DO CARDÁPIO
+
 function atualizarTela() {
-  let lista = document.getElementById("lista");
-  lista.innerHTML = "";
-
-  pedidos.forEach(item => {
-    lista.innerHTML += `
-      <div class="item">
-        ${item.nome}
-        <br><small>${item.obs}</small>
-      </div>
-    `;
-  });
-
-  document.getElementById("total").innerText = total;
-}
-
-/* 🔥 ENVIAR PEDIDO */
-window.enviar = function() {
-
-  let cliente = document.getElementById("cliente").value;
-  let telefone = document.getElementById("telefone").value;
-  let endereco = document.getElementById("endereco").value;
-
-  if (!cliente || !telefone) {
-    alert("Preencha nome e telefone");
-    return;
-  }
-
-  if (pedidos.length === 0) {
-    alert("Adicione itens");
-    return;
-  }
-
-  let resumo = pedidos.map(p =>
-    `${p.nome} (${p.obs || "sem observação"})`
-  ).join("\n");
-
-  push(ref(db, "pedidos"), {
-    cliente,
-    telefone,
-    endereco: endereco || "Retirada",
-    pedido: resumo,
-    total,
-    hora: new Date().toLocaleTimeString(),
-    formaPagamento,
-    statusPagamento: "pendente",
-  }).then(() => {
-
-  if (formaPagamento === "pix") {
-
-    let mensagem = `
-💰 PAGAMENTO VIA PIX
-
-Valor: R$ ${total}
-
-Chave PIX:
-${chavePix}
-
-📲 Envie o comprovante no WhatsApp para confirmar seu pedido.
-    `;
-
-    alert(mensagem);
-
-    let texto = encodeURIComponent(
-`Pedido realizado!\nTotal: R$ ${total}\nVou enviar o comprovante do PIX.`
-    );
-
-    window.open(`https://wa.me/11976681884?text=${texto}`);
-
-  } else {
-
-    alert("Pedido enviado! Pague na entrega.");
-
-  }
-
-  // 🔥 LIMPAR PEDIDO (muito importante)
-  pedidos = [];
-  total = 0;
-  atualizarTela();
-
-  document.getElementById("cliente").value = "";
-  document.getElementById("telefone").value = "";
-  document.getElementById("endereco").value = "";
-
-});
+    let lista = document.getElementById("lista");
+    if (lista) {
+        lista.innerHTML = "";
+        pedidos.forEach(item => {
+            lista.innerHTML += `<div class="item">${item.nome}<br><small>${item.obs}</small></div>`;
+        });
     }
-      
-      </script>
-  <script>
-  if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js")
-    .then(() => console.log("Service Worker registrado"))
-    .catch(err => console.log("Erro SW:", err));
+
+    let enderecoCampo = document.getElementById("endereco").value;
+    let taxaEntrega = 0;
+
+    // Se houver endereço e não for retirada
+    if (enderecoCampo && enderecoCampo.trim() !== "" && enderecoCampo !== "Retirada") {
+        
+        // Se as coordenadas do cliente ainda não carregaram, mostramos 5.00 por padrão
+        if (latDestino === null || lonDestino === null) {
+            taxaEntrega = 5.00;
+        } else {
+            // Se carregaram, calculamos a distância real
+            let km = calcularDistancia(
+                Number(MINHA_LAT), 
+                Number(MINHA_LON), 
+                Number(latDestino), 
+                Number(lonDestino)
+            );
+            
+            let kmCalculado = Math.round(km * 10) / 10;
+            console.log("📍 Distância Real Calculada:", kmCalculado, "km");
+
+            // REGRA: Até 2.2km (Guaianases local) = R$ 3.00
+            if (kmCalculado <= 2.2) {
+                taxaEntrega = 3.00;
+            } else {
+                taxaEntrega = 5.00;
+            }
+        }
+    } else {
+        taxaEntrega = 0; // Se for retirada
+    }
+
+    // ATUALIZAÇÃO DOS VALORES NA TELA
+    let vProdutos = Number(total);
+    document.getElementById("valorProdutos").innerText = vProdutos.toFixed(2);
+    document.getElementById("valorTaxa").innerText = taxaEntrega.toFixed(2);
+    document.getElementById("total").innerText = (vProdutos + taxaEntrega).toFixed(2);
 }
+    //cozinha
+    // 🔥 FUNÇÃO DE ENVIAR PARA O FIREBASE
+window.enviar = function() {
+    let cliente = document.getElementById("cliente").value;
+    let telefone = document.getElementById("telefone").value;
+    let endereco = document.getElementById("endereco").value;
+
+    if (!cliente || !telefone) { alert("Preencha nome e telefone"); return; }
+    if (pedidos.length === 0) { alert("Adicione itens ao carrinho"); return; }
+
+    let taxaEnvio = 0;
+    if (endereco && endereco !== "Retirada") {
+        if (latDestino !== null && lonDestino !== null) {
+            let km = calcularDistancia(Number(MINHA_LAT), Number(MINHA_LON), Number(latDestino), Number(lonDestino));
+            let kmFinalEnvio = Math.round(km * 10) / 10;
+            taxaEnvio = (kmFinalEnvio <= 2.2) ? 3.00 : 5.00;
+        } else {
+            taxaEnvio = 5.00;
+        }
+    }
+
+    let totalComEntrega = Number(total) + taxaEnvio;
+    let resumo = pedidos.map(p => `${p.nome} (${p.obs || "sem obs"})`).join("\n");
+    let novoPedidoRef = push(ref(db, "pedidos"));
+
+    set(novoPedidoRef, {
+        pedidoId: novoPedidoRef.key,
+        cliente, 
+        telefone, 
+        endereco: endereco || "Retirada",
+        pedido: resumo, 
+        total: totalComEntrega,
+        taxaEntrega: taxaEnvio,
+        hora: new Date().toLocaleTimeString(),
+        formaPagamento, 
+        status: "novo"
+    }).then(() => {
+        const idGerado = novoPedidoRef.key;
+        localStorage.setItem("pedidoId", idGerado);
+        
+        pedidos = []; total = 0; latDestino = null; lonDestino = null;
+        document.getElementById("cliente").value = "";
+        document.getElementById("telefone").value = "";
+        document.getElementById("endereco").value = "";
+        document.getElementById("cep").value = "";
+        
+        atualizarTela();
+        acompanharPedido(idGerado);
+        alert("Pedido enviado com sucesso!");
+    });
+};
+
+function acompanharPedido(id) {
+    if (!id) return;
+    const statusBox = document.getElementById("statusPedido");
+    const statusTexto = document.getElementById("statusTexto");
+    const pedidoRef = ref(db, "pedidos/" + id);
+
+    onValue(pedidoRef, (snapshot) => {
+        if (!snapshot.exists()) { statusBox.style.display = "none"; return; }
+        const p = snapshot.val();
+        statusBox.style.display = "block";
+        if (p.status === "novo") statusTexto.innerHTML = "⏳ <b>Pedido recebido!</b>";
+        else if (p.status === "preparo") statusTexto.innerHTML = "👨‍🍳 <b>Sendo preparado!</b>";
+        else if (p.status === "saiu") statusTexto.innerHTML = "🛵 <b>Saiu para entrega!</b>";
+        else if (p.status === "entregue") statusTexto.innerHTML = "✅ <b>Entregue!</b>";
+         setTimeout(() => {
+        localStorage.removeItem("pedidoId");
+        statusBox.style.display = "none";
+    },30000);
+    });
+}
+
+window.addEventListener("load", () => {
+    document.getElementById("endereco").addEventListener("input", atualizarTela);
+    let pedidoId = localStorage.getItem("pedidoId");
+    if (pedidoId) acompanharPedido(pedidoId);
+});
+
+
 </script>
 
 </body>
