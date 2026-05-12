@@ -2,9 +2,32 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+    <!-- Esta é a linha que faz a mágica: -->
+   <link rel="icon" type="image/png" href="realidade.png">
+
 <title>Admin - Produtos</title>
 
 <style>
+    .login-box {
+  max-width: 280px;
+  margin: 80px auto;
+  background: #333;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.login-box button {
+  width: auto;        /* 🔥 tira o botão gigante */
+  padding: 8px 20px;
+  display: inline-block;
+}
 body {
   font-family: Arial;
   background: #222;
@@ -45,7 +68,24 @@ button {
 
 </head>
 <body>
-<div id="loginBox">
+<button 
+style="
+position:fixed;
+top:10px;
+left:10px;
+z-index:9999;
+background:#333;
+color:white;
+padding:10px;
+border:none;
+border-radius:8px;
+width:auto;
+"
+onclick="window.location.href='controle.html'">
+⬅️ Voltar
+</button>
+    
+<div id="loginBox" class="login-box">
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="senha" placeholder="Senha">
   <button onclick="login()">Entrar</button>
@@ -56,7 +96,6 @@ button {
 <div class="container">
 
 <h2>⚙️ Gerenciar Produtos</h2>
-
 <input type="text" id="nome" placeholder="Nome do produto">
 <input type="number" id="preco" placeholder="Preço">
 <textarea id="descricao" placeholder="Ingredientes (ex: pão, carne, queijo)"></textarea>
